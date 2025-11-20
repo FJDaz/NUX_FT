@@ -1,0 +1,101 @@
+# Configuration Fine-Tuning Mistral 7B LoRA
+# Optimisé pour Colab Pro A100 40GB
+
+model:
+  name: "mistralai/Mistral-7B-Instruct-v0.3"
+
+  # Quantization 4-bit (QLoRA)
+  quantization:
+    load_in_4bit: true
+    bnb_4bit_quant_type: "nf4"           # NormalFloat4
+    bnb_4bit_compute_dtype: "bfloat16"   # Optimal sur A100
+    bnb_4bit_use_double_quant: true      # Double quantization
+
+# Configuration LoRA
+lora:
+  r: 64                    # Rang LoRA (haute qualité)
+  lora_alpha: 128          # Alpha = 2 * r
+  lora_dropout: 0.05       # Dropout léger
+  bias: "none"
+  task_type: "CAUSAL_LM"
+
+  # Modules ciblés (attention + MLP)
+  target_modules:
+    - "q_proj"
+    - "k_proj"
+    - "v_proj"
+    - "o_proj"
+    - "gate_proj"
+    - "up_proj"
+    - "down_proj"
+
+# Dataset
+data:
+  base_file: "data/FT/processed/schemes_levelA_base.jsonl"
+  augmented_file: "data/FT/processed/schemes_levelA_augmented.jsonl"
+  train_split: 0.95        # 95% train, 5% validation
+  max_seq_length: 512
+
+# Training hyperparameters
+training:
+  # Batch size (ajuster selon GPU)
+  per_device_train_batch_size: 8      # A100 40GB
+  per_device_eval_batch_size: 8
+  gradient_accumulation_steps: 4      # Effective batch = 32
+
+  # Learning rate
+  learning_rate: 2.0e-4               # Optimal pour LoRA
+  lr_scheduler_type: "cosine"
+  warmup_ratio: 0.03                  # 3% warmup
+
+  # Epochs
+  num_train_epochs: 3
+
+  # Optimisation
+  optim: "paged_adamw_8bit"           # AdamW 8-bit
+  bf16: true                           # bfloat16 sur A100
+  fp16: false
+
+  # Gradient clipping
+  max_grad_norm: 0.3
+
+  # Logging & Evaluation
+  logging_steps: 10
+  eval_strategy: "steps"
+  eval_steps: 50
+  save_steps: 100
+  save_total_limit: 3
+
+  # Monitoring
+  load_best_model_at_end: true
+  metric_for_best_model: "eval_loss"
+  greater_is_better: false
+
+# Output
+output:
+  dir: "./mistral-7b-philosophes-lora"
+  hub_repo: "FJDaz/mistral-7b-philosophes-lora"  # HF Hub repo
+
+# GPU-specific configs
+gpu_configs:
+  A100_40GB:
+    per_device_train_batch_size: 8
+    gradient_accumulation_steps: 4
+
+  V100_16GB:
+    per_device_train_batch_size: 4
+    gradient_accumulation_steps: 8
+
+  T4_15GB:
+    per_device_train_batch_size: 2
+    gradient_accumulation_steps: 16
+
+# Résultats attendus
+expected_results:
+  training_time_a100: "30-45 minutes"
+  training_time_v100: "1h-1h30"
+  training_time_t4: "2-3h"
+  final_train_loss: "< 0.5"
+  final_eval_loss: "< 0.6"
+  lora_size_mb: "250-350"
+  trainable_params_pct: "~1-2%"
