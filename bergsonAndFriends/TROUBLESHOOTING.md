@@ -1,5 +1,38 @@
 # 🔧 Troubleshooting - Problèmes Courants
 
+## ❌ Problème: Cellule 1 tourne dans le vide (pas d'output)
+
+### Symptôme
+La cellule d'installation (`!pip install -q -U ...`) tourne indéfiniment sans aucun feedback :
+- Pas d'erreur
+- Pas de progression visible
+- On dirait que ça freeze
+
+### Cause
+Le flag `-q` (quiet mode) masque tout l'output de pip, donnant l'impression que rien ne se passe. L'installation prend réellement **2-3 minutes** pour télécharger et installer les packages.
+
+### ✅ Solution
+**Le notebook a été corrigé** : flag `-q` retiré pour afficher la progression.
+
+**Maintenant vous verrez :**
+```
+📦 Installation des packages (peut prendre 2-3 minutes)...
+
+Collecting torch>=2.2.0
+  Downloading torch-2.5.1-cp310-cp310-linux_x86_64.whl (1024 MB)
+     ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ 1024/1024 MB 15.2 MB/s eta 0:00:00
+Installing collected packages: torch
+...
+✅ Installation terminée !
+```
+
+**Temps normal :**
+- GPU T4/V100/A100 : 2-3 minutes
+- Première exécution : plus long (téléchargements)
+- Exécutions suivantes : plus rapide (cache)
+
+---
+
 ## ❌ Erreur: "No matching distribution found for torch==2.1.2"
 
 ### Problème
