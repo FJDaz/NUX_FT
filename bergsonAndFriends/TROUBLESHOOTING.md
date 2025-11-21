@@ -220,6 +220,48 @@ Si latence critique, déployer sur Modal/HF GPU au lieu de CPU.
 
 ---
 
+## ❌ Modèle génère seulement des zéros après re-fine-tuning
+
+### Problème
+Après re-fine-tuning, le modèle génère des outputs corrompus (répétition de zéros) :
+```
+💬 SPINOZA : [20000000000000000000000000000000000000000...
+```
+
+### Cause
+**Catastrophic forgetting massif** causé par :
+- Re-fine-tuning sur dataset trop petit (ex: 23 exemples)
+- Ratio déséquilibré : 1200 exemples initiaux → 23 exemples correction
+- Le modèle "oublie" tout ce qu'il a appris et surajuste sur les 23 exemples
+
+### ✅ Solution
+**TOUJOURS combiner datasets** lors du re-fine-tuning :
+
+1. **Ratio 80/20 :**
+   - 80% du dataset original (schèmes logiques)
+   - 100% du dataset de correction (incarnation)
+   - Exemple : 720 schèmes + 213 incarnation = 933 exemples
+
+2. **Code correct :**
+   ```python
+   from datasets import concatenate_datasets
+
+   # Prendre 80% du dataset original
+   dataset_schemes_sample = dataset_schemes.shuffle(seed=42).select(range(int(len(dataset_schemes)*0.8)))
+
+   # Combiner avec dataset correction
+   dataset_combined = concatenate_datasets([dataset_schemes_sample, dataset_incarnation])
+   ```
+
+3. **Paramètres adaptés :**
+   - Learning rate normal : `2e-4` (pas réduit)
+   - Epochs : 2-3 (pas 1 seul)
+   - Monitoring : `eval_loss` tous les 20 steps
+
+**Voir Section 8 du notebook** pour l'implémentation complète.
+
+---
+
 ## 📞 Aide Supplémentaire
 
 Si aucune solution ne fonctionne :
@@ -247,4 +289,4 @@ Si aucune solution ne fonctionne :
 ---
 
 **Dernière mise à jour :** 20 novembre 2025
-**Versions testées :** torch>=2.2.0, transformers>=4.40.0, peft>=0.10.0
+**Versions testées :** torch==2.8.0, transformers>=4.40.0, peft>=0.10.0, trl>=0.8.0
